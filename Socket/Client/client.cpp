@@ -58,6 +58,11 @@ void ProcSendMessage(void *arg)
 		cout << "enter msg : ";
 		cin >> sendMsg;
 
+		if (strcmp(sendMsg, "exit") == 1)
+		{
+			exit(0);
+		}
+		
 		rc = send(procSocket, (const char*)sendMsg, sizeof(sendMsg), 0);
 
 		if (rc <= 0)

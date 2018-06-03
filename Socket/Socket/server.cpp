@@ -5,22 +5,25 @@ SOCKET CreateServerSocket(short pnum, int blog); //
 void acceptAndProcPacket(SOCKET sock, SOCKET socketList[]);              //Accept Loop
 void ProcSendRecv(void *param);
 void SendMsgAllUser(char * msg);
+void SendMsgAllUserExceptSender(char * msg, SOCKET senderSocket);
 
 void InitProcSocketList(SOCKET socketList[]);
 SOCKET SetSocketToList(SOCKET socketList[], SOCKET sock);
 bool UnsetSocketFromList(SOCKET sock);
 
-SOCKET socketList[SOCKET_LIST_SIZE];
+SOCKET ClientSocketList[SOCKET_LIST_SIZE];
 
+fd_set mainFDSet;
+fd_set tempFDSet;
 
 int main()
 {
 
 	WSADATA wsadata;
 	WSAStartup(MAKEWORD(2, 2), &wsadata);                  // 윈속 초기화
-	SOCKET listenSocket = CreateServerSocket(PORT_NUM, BLOG_SIZE); // 서버 소켓 생성
+	SOCKET ServerlistenSocket = CreateServerSocket(PORT_NUM, BLOG_SIZE); // 서버 소켓 생성
 
-	if (listenSocket == -1)
+	if (ServerlistenSocket == -1)
 	{
 		perror("create server socket error");
 
@@ -28,7 +31,10 @@ int main()
 		return 0;
 	}
 
-	acceptAndProcPacket(listenSocket, socketList); //accept 이후 쓰레드생성 및 send, recv 처리
+	FD_ZERO(&mainFDSet);
+	FD_SET(ServerlistenSocket, &mainFDSet);
+	
+	acceptAndProcPacket(ServerlistenSocket, ClientSocketList); //accept 이후 쓰레드생성 및 send, recv 처리
 
 	WSACleanup();
 	return 0;
@@ -84,46 +90,56 @@ void acceptAndProcPacket(SOCKET listenSock, SOCKET socketList[])
 	SOCKET procSocket;
 	SOCKADDR_IN clientAddr = { 0 };
 	int len = sizeof(clientAddr);
+	int maxFD = listenSock + 1;
 	InitProcSocketList(socketList);
+
 
 	while (true)
 	{
+		tempFDSet = mainFDSet;
+		if (select(maxFD, &tempFDSet, 0, 0, 0) < 1) {
+			perror("select error : ");
+			exit(1);
+		}
 
-		procSocket = accept(listenSock, (SOCKADDR *)&clientAddr, &len); //연결 수락
-		if (procSocket == -1)
+
+		for (int targetFD = 0; targetFD < maxFD + 1; targetFD++)
 		{
-			if (WSAGetLastError() == WSAEWOULDBLOCK)
+			if (FD_ISSET(targetFD, &tempFDSet))
 			{
-				perror("blocking socket error");
-				Sleep(1000);
-				continue;
+				if (targetFD == listenSock)
+				{
+					//소켓 셋 순회중에 서버 리스닝소켓일경우에 accecpt 처리 
+					procSocket = accept(listenSock, (SOCKADDR *)&clientAddr, &len);
+					if (procSocket < 0)
+					{
+						perror("accept error : ");
+						continue;
+					}
+
+					if (SetSocketToList(socketList, procSocket) == -1)
+					{
+						printf("%s:%d connect fail. list is full \n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+						continue;
+					};
+
+					// accecpt 된 소켓을 set에 할당
+					FD_SET(procSocket, &mainFDSet);
+					printf("%s:%d connected \n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+
+					if (procSocket > maxFD)
+					{
+						maxFD = procSocket;
+					}
+				}
+				else
+				{
+					ProcSendRecv((void *)procSocket);
+				}
+
 			}
-
-			perror("accept error");
-			//break;;
-			continue;
 		}
 
-		if (SetSocketToList(socketList, procSocket) == -1)
-		{
-			printf("%s:%d connect fail. list is full \n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
-			continue;
-		}
-
-
-		printf("%s:%d connected \n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
-
-
-
-		//_beginthread(ProcSendRecv, 0, (void *)procSocket) ;
-
-		ProcSendRecv((void *)procSocket);
-
-		/**
-		unsigned threadID;
-		HANDLE hThread = (HANDLE)_beginthreadex(NULL, 0, ProcSendRecv, (void *)procSocket, 0, &threadID);
-		CloseHandle( hThread );
-		*/
 	}
 
 	closesocket(listenSock); //소켓 닫기
@@ -146,7 +162,8 @@ void ProcSendRecv(void *arg)
 	int len_by_header = 0;
 	int msg_buff_len = sizeof(msg);
 
-	while (recv(procSocket, msg, msg_buff_len, 0) > 0) //수신
+	//while (recv(procSocket, msg, msg_buff_len, 0) > 0) //수신
+	if (recv(procSocket, msg, msg_buff_len, 0) > 0) //수신
 	{
 		//패킷 실제 길이 알아오기
 		int len_by_real_data_size = 0;
@@ -236,7 +253,7 @@ void ProcSendRecv(void *arg)
 
 		ret_msg_buf = ret_msg.c_str();
 		int msg_len = strlen(ret_msg_buf);
-		SendMsgAllUser((char*)ret_msg_buf);
+		SendMsgAllUserExceptSender((char*)ret_msg_buf, procSocket);
 
 		len_by_header = 0;
 		len_1 = "0";
@@ -246,10 +263,14 @@ void ProcSendRecv(void *arg)
 		msg[0] = '\0';
 
 	}
-
-	printf("%s:%d close\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
-	closesocket(procSocket); //소켓 닫기
-	UnsetSocketFromList(procSocket);
+	else {
+		UnsetSocketFromList(procSocket);
+		FD_CLR(procSocket, &mainFDSet);
+		printf("%s:%d close\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+	}
+	
+	//closesocket(procSocket); //소켓 닫기
+	//UnsetSocketFromList(procSocket);
 
 }
 
@@ -258,10 +279,22 @@ void SendMsgAllUser(char * msg)
 {
 	for (int i = 0; i < SOCKET_LIST_SIZE; i++)
 	{
-		if (socketList[i] != 0)
+		if (ClientSocketList[i] != 0)
 		{
 			int msg_len = strnlen(msg, BUF_SIZE - 1);
-			send(socketList[i], msg, msg_len, 0);
+			send(ClientSocketList[i], msg, msg_len, 0);
+		}
+	}
+}
+
+void SendMsgAllUserExceptSender(char * msg, SOCKET senderSocket)
+{
+	for (int i = 0; i < SOCKET_LIST_SIZE; i++)
+	{
+		if (ClientSocketList[i] != 0 && ClientSocketList[i] != senderSocket)
+		{
+			int msg_len = strnlen(msg, BUF_SIZE - 1);
+			send(ClientSocketList[i], msg, msg_len, 0);
 		}
 	}
 }
@@ -295,9 +328,9 @@ bool UnsetSocketFromList(SOCKET sock)
 {
 	for (int i = 0; i < SOCKET_LIST_SIZE; i++)
 	{
-		if (socketList[i] == sock)
+		if (ClientSocketList[i] == sock)
 		{
-			socketList[i] = 0;
+			ClientSocketList[i] = 0;
 			return true;
 		}
 	}
