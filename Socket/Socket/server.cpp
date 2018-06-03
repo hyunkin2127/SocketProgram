@@ -92,24 +92,28 @@ void acceptAndProcPacket(SOCKET listenSock, SOCKET socketList[])
 	int len = sizeof(clientAddr);
 	int maxFD = listenSock + 1;
 	InitProcSocketList(socketList);
-
+	const char * fullMsg = "already full]\n";
+	const char * AccecptSuccessMsg = "connected to server\n";
 
 	while (true)
 	{
-		tempFDSet = mainFDSet;
+		tempFDSet = mainFDSet; // 원본 set을 보존하기 위해서 복사해서 사용?
+
+
+		//살펴볼 디스크립터 목록을 등록 
 		if (select(maxFD, &tempFDSet, 0, 0, 0) < 1) {
 			perror("select error : ");
 			exit(1);
 		}
 
-
+		//fd 셋 돌면서 채팅 메시지 처리 
 		for (int targetFD = 0; targetFD < maxFD + 1; targetFD++)
 		{
 			if (FD_ISSET(targetFD, &tempFDSet))
 			{
 				if (targetFD == listenSock)
 				{
-					//소켓 셋 순회중에 서버 리스닝소켓일경우에 accecpt 처리 
+					//소켓 셋 순회중에 만난 fd가 서버 리스닝소켓일경우에 accept 처리 
 					procSocket = accept(listenSock, (SOCKADDR *)&clientAddr, &len);
 					if (procSocket < 0)
 					{
@@ -120,16 +124,19 @@ void acceptAndProcPacket(SOCKET listenSock, SOCKET socketList[])
 					if (SetSocketToList(socketList, procSocket) == -1)
 					{
 						printf("%s:%d connect fail. list is full \n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+						send(procSocket, fullMsg, sizeof(fullMsg), 0);
 						continue;
 					};
 
 					// accecpt 된 소켓을 set에 할당
 					FD_SET(procSocket, &mainFDSet);
 					printf("%s:%d connected \n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+					
+					send(procSocket, AccecptSuccessMsg, sizeof(AccecptSuccessMsg), 0);
 
 					if (procSocket > maxFD)
 					{
-						maxFD = procSocket;
+						maxFD = procSocket; // 살펴볼 디스크립터의 범위를 넓히기 위함인듯?
 					}
 				}
 				else
