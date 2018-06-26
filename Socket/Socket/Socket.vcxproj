@@ -116,9 +116,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="ClientInfo.h" />
+    <ClInclude Include="ClientInfoList.h" />
+    <ClInclude Include="GameManager.h" />
     <ClInclude Include="main.h" />
+    <ClInclude Include="UserGameInfo.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ClientInfo.cpp" />
+    <ClCompile Include="ClientInfoList.cpp" />
+    <ClCompile Include="GameManager.cpp" />
     <ClCompile Include="selectServer2.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClCompile>
@@ -126,6 +133,10 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="server.cpp" />
+    <ClCompile Include="server_prev.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="UserGameInfo.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -22,11 +22,12 @@ using namespace std;
 #include <stdlib.h>
 #include <malloc.h>
 #include <fcntl.h>
-
+#include <vector>
 
 
 #define SERVER_PORT 11235  // server port number
 #define BUF_SIZE 128 // block transfer size  
+#define PACKET_DATA_LENGTH 10
 #define QUEUE_SIZE 10
 #define IPAddress "127.0.0.1" // server IP address
 #define PORT_NUM 10200
