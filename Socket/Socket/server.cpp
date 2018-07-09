@@ -12,6 +12,7 @@ void SendMsgAllUserExceptSender(char * msg, SOCKET senderSocket);
 void InitProcSocketList(SOCKET socketList[]);
 SOCKET SetSocketToList(SOCKET socketList[], SOCKET sock);
 bool UnsetSocketFromList(SOCKET sock);
+void Tokenize(const string& str, vector<string>& tokens, const string& delimiters);
 
 GameManager * gManager;
 SOCKET ClientSocketList[SOCKET_LIST_SIZE];
@@ -229,29 +230,26 @@ void ProcSendRecv(void *arg)
 		printf("%s:%d's data_size_sum:%d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port), len_by_real_data_size_sum);
 		printf("%s:%d's msg:", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
 		cout << ret_msg << endl;
-		
-		printf("%s:%d's ret_msg:", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
-		cout << ret_msg + '\0' << endl;
 		cout << "-------------------------------------" << endl;
 
 		
-		char* context = NULL;
-		char * parsedMsg[4];
-
-		for (int i = 0; i < 3; i++)
+		//베팅 처리
+		if (ret_msg.substr(0, 3).compare("bet") == 0)
 		{
-			parsedMsg[i] = strtok_s(msg, ":", &context);
+			string msg = ret_msg.substr(4);
+			vector<string> parsedBetMsg;
+			Tokenize(msg, parsedBetMsg, ":");
+			ClientInfo * info = cInfoList->GetClientInfoObjBySocket(senderSocket);
+			// bet:홀짝(0,1):액수
+
+			for (vector<string>::size_type i = 0; i < parsedBetMsg.size(); ++i)
+				cout << parsedBetMsg[i] << endl;
+			
+			
+			info->betType = atoi(parsedBetMsg[0].c_str());
+			info->bettedCoinThisTurn = atoi(parsedBetMsg[1].c_str());
 		}
-
-		ClientInfo * info = cInfoList->GetClientInfoObjBySocket(senderSocket);
-
-		//베팅중
-		if ((int)parsedMsg[0] == 1)
-		{
-
-			 
-		}
-
+		
 		ret_msg_buf = ret_msg.c_str();
 		int msg_len = strlen(ret_msg_buf);
 
@@ -262,20 +260,21 @@ void ProcSendRecv(void *arg)
 }
 
 
-void Tokenize(const string& str, vector<string>& tokens, const string& delimiters = " ")
+void Tokenize(const string& str, vector<string>& tokens, const string& delimiters )
 {
-	// 맨 첫 글자가 구분자인 경우 무시
-	string::size_type lastPos = str.find_first_not_of(delimiters, 0);
-	// 구분자가 아닌 첫 글자를 찾는다
-	string::size_type pos = str.find_first_of(delimiters, lastPos);
+	tokens.clear();
+	// Skip delimiters at beginning.
+	std::string::size_type lastPos = str.find_first_not_of(delimiters, 0);
+	// Find first "non-delimiter".
+	std::string::size_type pos = str.find_first_of(delimiters, lastPos);
 
-	while (string::npos != pos || string::npos != lastPos)
+	while (std::string::npos != pos || std::string::npos != lastPos)
 	{
-		// token을 찾았으니 vector에 추가한다
+		// Found a token, add it to the vector.
 		tokens.push_back(str.substr(lastPos, pos - lastPos));
-		// 구분자를 뛰어넘는다.  "not_of"에 주의하라
+		// Skip delimiters.  Note the "not_of"
 		lastPos = str.find_first_not_of(delimiters, pos);
-		// 다음 구분자가 아닌 글자를 찾는다
+		// Find next "non-delimiter"
 		pos = str.find_first_of(delimiters, lastPos);
 	}
 }

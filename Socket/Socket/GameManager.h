@@ -7,7 +7,10 @@ class GameManager
 	static const int STATE_BETTING = 1;
 	static const int STATE_WAIT = 2;
 	
-	const int BET_TIME = 30;
+	static const int EVEN = 0;
+	static const int ODD = 1;
+
+	const int BET_TIME = 10;
 	const int WAIT_TIME = 5;
 	
 

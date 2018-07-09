@@ -23,9 +23,11 @@ public:
 	~ClientInfo();
 
 	void clearObj();
-	int betCoin(int betCount);
+	void ResetBetInfo();
+	int CaculateBetCoin(int betType);
 	const char * BuildGameInfoMsgByState(int state, int round, string user_id);
-
+	const char * BuildGameResultMsg(int round);
+	
 
 	SOCKET socket;
 	string user_id;
@@ -34,7 +36,8 @@ public:
 	
 	int curCoin = 50;
 	int bettedCoinThisTurn;
-
+	int betType;
+	bool is_win;
 
 	char sendBuff[MAX_MSG_LEN];
 	char recvBuff[MAX_MSG_LEN];

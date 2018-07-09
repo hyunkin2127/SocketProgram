@@ -147,3 +147,47 @@ void ClientInfoList::BroadCastGameState(int state, int round)
 		}
 	}
 }
+
+
+
+
+void ClientInfoList::CaculateBetCoin(int evenOdd)
+{
+	for (int i = 0; i < SOCKET_LIST_SIZE; i++)
+	{
+		if (list[i]->socket > 0)
+		{
+			list[i]->CaculateBetCoin(evenOdd);
+		}
+	}
+}
+
+void ClientInfoList::SendGameResultMsgToUser(int round)
+{
+	for (int i = 0; i < SOCKET_LIST_SIZE; i++)
+	{
+		if (list[i]->socket > 0)
+		{
+			const char * msg = list[i]->BuildGameResultMsg(round);
+			int msg_len = strnlen(msg, BUF_SIZE - 1);
+			send(list[i]->socket, msg, msg_len, 0);
+			
+			cout << list[i]->user_id + " : ";
+			cout << msg << endl;
+		}
+	}
+}
+
+
+
+
+void ClientInfoList::ResetBetInfo()
+{
+	for (int i = 0; i < SOCKET_LIST_SIZE; i++)
+	{
+		if (list[i]->socket > 0)
+		{
+			list[i]->ResetBetInfo();
+		}
+	}
+}

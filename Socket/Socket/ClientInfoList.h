@@ -21,6 +21,9 @@ public:
 
 	void BroadCastGameState(int state, int round);
 	
+	void ResetBetInfo();
+	void CaculateBetCoin(int round);
+	void SendGameResultMsgToUser(int round);
 
 	fd_set mainFDSet;
 	ClientInfo * list[SOCKET_LIST_SIZE];

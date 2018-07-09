@@ -41,9 +41,6 @@ void GameManager::ProcBet()
 			Sleep(1000);
 		}
 
-
-		
-
 		string startNoticeMsg = std::to_string(curRound);
 		startNoticeMsg += "회차 베팅을 시작합니다. 베팅시간 :";;
 		startNoticeMsg += std::to_string(BET_TIME);
@@ -73,10 +70,20 @@ void GameManager::ProcBet()
 		}
 
 		curState = STATE_WAIT;
-		string leftTimeMsg = "베팅종료. 정산... ";
-		cout <<  "베팅종료. 정산... " << endl;
+
+		int randNum = rand() % 6 + 1;
+
+		string leftTimeMsg = "베팅종료! 주사위 굴립니다. 나온숫자 : ";
+		leftTimeMsg += std::to_string(randNum);
+		cout << leftTimeMsg << endl;
+		
 		cInfoList->BroadcastMsg(leftTimeMsg.c_str());
 		cInfoList->BroadCastGameState(curState, curRound);
+
+		cInfoList->CaculateBetCoin(randNum % 2);
+		cInfoList->SendGameResultMsgToUser(curRound);
+		cInfoList->ResetBetInfo();
+
 		curRound++;
 	}
 }
